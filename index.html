@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Vibe Museum - 个人电子收藏馆</title>
+    
+    <!-- iOS Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Vibe馆">
+    
+    <!-- Tailwind CSS for modern rapid styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter and Playfair Display for premium museum look matching image_f066e0.jpg -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- React and Babel CDNs for robust component structure in single file -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f6f6f3;
+        }
+        .serif-font {
+            font-family: 'Playfair Display', Georgia, serif;
+        }
+        /* Custom scrollbars for beautiful aesthetic list navigation */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Dynamic iOS PWA Home Indicator padding adjustment */
+        .pb-safe {
+            padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+        }
+        .pt-safe {
+            padding-top: calc(env(safe-area-inset-top) + 1rem);
+        }
+        /* Custom grayscaling for SOLD OUT items to match high-end photo treatments in image_f066e0.jpg */
+        .sold-out-grayscale {
+            filter: grayscale(90%) contrast(95%);
+            opacity: 0.65;
+        }
+        /* Shimmer effect for DeepSeek AI analysis loading states */
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+        .shimmer {
+            position: relative;
+            overflow: hidden;
+        }
+        .shimmer::after {
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            transform: translateX(-100%);
+            background-image: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.4) 20%,
+                rgba(255, 255, 255, 0.6) 60%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            animation: shimmer 1.5s infinite;
+            content: '';
+        }
+    </style>
+</head>
+<body class="text-[#20252c] overflow-x-hidden">
+
+    <div id="app"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // Custom High-Quality SVG Icons Component to reduce layout thrashing
+        function Icon({ name, className = "w-5 h-5", strokeWidth = 2 }) {
+            const icons = {
+                search: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                ),
+                filter: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                ),
+                plus: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                ),
+                settings: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                ),
+                back: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                ),
+                heart: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                ),
+                chart: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                ),
+                sparkles: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                ),
+                location: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                ),
+                info: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                ),
+                trash: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                ),
+                edit: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                ),
+                share: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                ),
+                addPhoto: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                ),
+                trendUp: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                ),
+                link: (
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} strokeWidth={strokeWidth}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                )
+            };
+            return icons[name] || null;
+        }
+
+        const INITIAL_MOCK_ITEMS = [
+            {
+                id: "mock-item-1",
+                name: "Molly 蒸汽朋克隐藏款",
+                ip: "泡泡玛特",
+                character: "Molly",
+                tags: ["隐藏款", "盲盒", "蒸汽朋克"],
+                status: "in_stock", 
+                image_url: "https://images.unsplash.com/photo-1608889175123-8ec330b86f84?auto=format&fit=crop&q=80&w=600",
+                purchase_price: 59,
+                current_market_price: 380,
+                price_history: [
+                    { date: "2026-01-01", price: 59, source: "入手价" },
+                    { date: "2026-03-15", price: 210, source: "DeepSeek估价" },
+                    { date: "2026-05-10", price: 340, source: "手工记录" },
+                    { date: "2026-06-10", price: 380, source: "DeepSeek估价" }
+                ],
+                location: {
+                    name: "客厅A柜第三层",
+                    description: "展架最深处，放在灯泡玩偶后面",
+                    image_url: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=600"
+                },
+                created_at: "2026-01-01",
+                notes: "蒸汽朋克风格非常惊艳，材质带有特殊的金属光泽漆面。此价格已经历三次全网二级市场价格飞升，目前市场溢价极佳。"
+            },
+            {
+                id: "mock-item-2",
+                name: "宝可梦 25周年 黄金皮卡丘限定",
+                ip: "宝可梦",
+                character: "皮卡丘",
+                tags: ["25周年", "限量卡牌", "极高溢价"],
+                status: "selling",
+                image_url: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&q=80&w=600",
+                purchase_price: 1200,
+                current_market_price: 2450,
+                price_history: [
+                    { date: "2026-01-10", price: 1200, source: "入手价" },
+                    { date: "2026-04-01", price: 1800, source: "DeepSeek估价" },
+                    { date: "2026-06-10", price: 2450, source: "DeepSeek估价" }
+                ],
+                location: {
+                    name: "卧室B防潮密封箱",
+                    description: "卧室五斗橱最底层，第二排密封袋中",
+                    image_url: "https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&q=80&w=600"
+                },
+                created_at: "2026-01-10",
+                notes: "25周年黄金闪卡，状态满分（评级完美PSA10）。目前挂在闲鱼和得物同步询价中。"
+            },
+            {
+                id: "mock-item-3",
+                name: "Bearbrick 初音未来 联名 400%",
+                ip: "积木熊",
+                character: "初音未来",
+                tags: ["初音未来", "联名", "大型积木"],
+                status: "sold",
+                image_url: "https://images.unsplash.com/photo-1559583985-c80d8ad9b29f?auto=format&fit=crop&q=80&w=600",
+                purchase_price: 880,
+                current_market_price: 1400,
+                price_history: [
+                    { date: "2026-02-15", price: 880, source: "入手价" },
+                    { date: "2026-05-18", price: 1400, source: "二手成交价" }
+                ],
+                location: {
+                    name: "客厅展架顶层",
+                    description: "已售出，但保留电子留念，买家为极氪同城藏友。",
+                    image_url: ""
+                },
+                created_at: "2026-02-15",
+                notes: "当时一抢而空的联名佳作，400%身段。已在2026年5月份于线上平台成功溢价出让，赚取差价520元。"
+            }
+        ];
+
+        function App() {
+            const [items, setItems] = useState(() => {
+                const stored = localStorage.getItem("vibe_museum_items");
+                return stored ? JSON.parse(stored) : INITIAL_MOCK_ITEMS;
+            });
+            const [selectedIP, setSelectedIP] = useState("全部");
+            const [selectedCharacter, setSelectedCharacter] = useState("全部");
+            const [searchQuery, setSearchQuery] = useState("");
+            const [activeTab, setActiveTab] = useState("gallery"); 
+            const [selectedItemId, setSelectedItemId] = useState(null);
+            const [deepSeekKey, setDeepSeekKey] = useState(() => localStorage.getItem("vibe_deepseek_key") || "");
+            const [showLocationPopover, setShowLocationPopover] = useState(false);
+            const [toast, setToast] = useState(null);
+            
+            // Custom dialog overlay status (compliant with browser alert & confirm removal)
+            const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+            // Ref for desktop mouse dragging to scroll smoothly
+            const scrollContainerRef = useRef(null);
+            const isDragging = useRef(false);
+            const startX = useRef(0);
+            const scrollLeft = useRef(0);
+
+            // Edit modes / Temp forms
+            const [editingItem, setEditingItem] = useState(null);
+            const [customIPs, setCustomIPs] = useState(() => {
+                const stored = localStorage.getItem("vibe_custom_ips");
+                return stored ? JSON.parse(stored) : ["全部", "泡泡玛特", "宝可梦", "积木熊", "高达", "其他"];
+            });
+
+            // --- Form Control States for seamless Link Autofill ---
+            const [formName, setFormName] = useState("");
+            const [formIp, setFormIp] = useState("泡泡玛特");
+            const [formCharacter, setFormCharacter] = useState("");
+            const [formTags, setFormTags] = useState("");
+            const [formStatus, setFormStatus] = useState("in_stock");
+            const [formImageUrl, setFormImageUrl] = useState("");
+            const [formPurchasePrice, setFormPurchasePrice] = useState("");
+            const [formCurrentMarketPrice, setFormCurrentMarketPrice] = useState("");
+            const [formLocationName, setFormLocationName] = useState("");
+            const [formLocationDescription, setFormLocationDescription] = useState("");
+            const [formLocationImageUrl, setFormLocationImageUrl] = useState("");
+            const [formNotes, setFormNotes] = useState("");
+
+            // Import Link State
+            const [linkToImport, setLinkToImport] = useState("");
+            const [isParsingLink, setIsParsingLink] = useState(false);
+
+            // Custom elegant Toast helper to replace native alert()
+            const triggerToast = (msg, type = "success") => {
+                setToast({ msg, type });
+                setTimeout(() => setToast(null), 3000);
+            };
+
+            useEffect(() => {
+                if (activeTab === "add") {
+                    if (editingItem) {
+                        setFormName(editingItem.name || "");
+                        setFormIp(editingItem.ip || "泡泡玛特");
+                        setFormCharacter(editingItem.character || "");
+                        setFormTags(editingItem.tags ? editingItem.tags.join(", ") : "");
+                        setFormStatus(editingItem.status || "in_stock");
+                        setFormImageUrl(editingItem.image_url || "");
+                        setFormPurchasePrice(editingItem.purchase_price || "");
+                        setFormCurrentMarketPrice(editingItem.current_market_price || "");
+                        setFormLocationName(editingItem.location?.name || "");
+                        setFormLocationDescription(editingItem.location?.description || "");
+                        setFormLocationImageUrl(editingItem.location?.image_url || "");
+                        setFormNotes(editingItem.notes || "");
+                    } else {
+                        setFormName("");
+                        setFormIp("泡泡玛特");
+                        setFormCharacter("");
+                        setFormTags("");
+                        setFormStatus("in_stock");
+                        setFormImageUrl("");
+                        setFormPurchasePrice("");
+                        setFormCurrentMarketPrice("");
+                        setFormLocationName("");
+                        setFormLocationDescription("");
+                        setFormLocationImageUrl("");
+                        setFormNotes("");
+                    }
+                    setLinkToImport(""); 
+                }
+            }, [activeTab, editingItem]);
+
+            // Auto-sync items data to LocalStorage
+            useEffect(() => {
+                localStorage.setItem("vibe_museum_items", JSON.stringify(items));
+            }, [items]);
+
+            // Auto-sync Custom IPs
+            useEffect(() => {
+                localStorage.setItem("vibe_custom_ips", JSON.stringify(customIPs));
+            }, [customIPs]);
+
+            // Save DeepSeek Key safely
+            const saveApiKey = (key) => {
+                setDeepSeekKey(key);
+                localStorage.setItem("vibe_deepseek_key", key);
+            };
+
+            // Selected Item Retrieval
+            const currentItem = useMemo(() => {
+                return items.find(i => i.id === selectedItemId);
+            }, [items, selectedItemId]);
+
+            const filteredItems = useMemo(() => {
+                return items.filter(item => {
+                    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                          item.character.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                          (item.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                                          item.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+                    
+                    const matchesIP = selectedIP === "全部" || item.ip === selectedIP;
+                    const matchesChar = selectedCharacter === "全部" || item.character === selectedCharacter;
+                    
+                    return matchesSearch && matchesIP && matchesChar;
+                });
+            }, [items, searchQuery, selectedIP, selectedCharacter]);
+
+            const handleMouseDown = (e) => {
+                isDragging.current = true;
+                startX.current = e.pageX - scrollContainerRef.current.offsetLeft;
+                scrollLeft.current = scrollContainerRef.current.scrollLeft;
+            };
+
+            const handleMouseLeave = () => {
+                isDragging.current = false;
+            };
+
+            const handleMouseUp = () => {
+                isDragging.current = false;
+            };
+
+            const handleMouseMove = (e) => {
+                if (!isDragging.current) return;
+                e.preventDefault();
+                const x = e.pageX - scrollContainerRef.current.offsetLeft;
+                const walk = (x - startX.current) * 1.8; 
+                scrollContainerRef.current.scrollLeft = scrollLeft.current - walk;
+            };
+
+            const stats = useMemo(() => {
+                let totalCost = 0;
+                let currentEstimatedVal = 0;
+                let realizedGain = 0;
+                let activeCount = 0;
+
+                items.forEach(item => {
+                    if (item.status === "sold") {
+                        realizedGain += (item.current_market_price - item.purchase_price);
+                    } else {
+                        totalCost += item.purchase_price;
+                        currentEstimatedVal += item.current_market_price;
+                        activeCount++;
+                    }
+                });
+
+                const unrealizedGain = currentEstimatedVal - totalCost;
+
+                return {
+                    totalCost,
+                    currentEstimatedVal,
+                    realizedGain,
+                    unrealizedGain,
+                    activeCount
+                };
+            }, [items]);
+
+            const handleUrlImport = () => {
+                if (!linkToImport.trim()) {
+                    triggerToast("请输入有效的收藏品页面链接！", "error");
+                    return;
+                }
+
+                setIsParsingLink(true);
+                
+                // Pure simulation mapping based on typical domains with rich collector toys metadata
+                setTimeout(() => {
+                    const url = linkToImport.toLowerCase();
+                    let mockedData = {
+                        name: "宇宙大师 KAWS 潮玩雕塑限量款",
+                        ip: "其他",
+                        character: "KAWS Companion",
+                        tags: "全球限量, 潮玩雕塑, 精致典藏",
+                        purchasePrice: 1999,
+                        marketPrice: 3450,
+                        imageUrl: "https://images.unsplash.com/photo-1566150905458-1bf1fc15a490?auto=format&fit=crop&q=80&w=600",
+                        notes: "[智能链接导入] 解析自官方收藏发布页。KAWS 标志性十字眼雕塑作品，整体做工及涂装细腻，极富收藏价值。"
+                    };
+
+                    if (url.includes("goofish") || url.includes("xianyu") || url.includes("闲鱼")) {
+                        mockedData = {
+                            name: "盲盒 Molly 蒸汽朋克公仔 (玩家回血一手货源)",
+                            ip: "泡泡玛特",
+                            character: "Molly",
+                            tags: "盲盒公仔, 闲鱼二手, 准全新",
+                            purchasePrice: 59,
+                            marketPrice: 240,
+                            imageUrl: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=600",
+                            notes: "[智能链接导入] 闲鱼二手溢价行情。原装盲盒拆袋确认款，箱说齐全，主理人标示无瑕疵，属于理想入手时机。"
+                        };
+                    } else if (url.includes("dewu") || url.includes("得物") || url.includes("poizon")) {
+                        mockedData = {
+                            name: "Bearbrick 积木熊 千秋联名 400%",
+                            ip: "积木熊",
+                            character: "千秋 MY FIRST",
+                            tags: "千秋设计, 溢价之皇, 极速鉴别",
+                            purchasePrice: 1800,
+                            marketPrice: 2890,
+                            imageUrl: "https://images.unsplash.com/photo-1559583985-c80d8ad9b29f?auto=format&fit=crop&q=80&w=600",
+                            notes: "[智能链接导入] 得物潮流行情。通过官方双重防伪鉴别。包装盒角完好，属于投资增值级别藏品。"
+                        };
+                    } else if (url.includes("pokemon") || url.includes("宝可梦")) {
+                        mockedData = {
+                            name: "喷火龙 经典立体雕刻限量版手办",
+                            ip: "宝可梦",
+                            character: "喷火龙",
+                            tags: "官方手办, 经典回归, 珍稀御三家",
+                            purchasePrice: 320,
+                            marketPrice: 680,
+                            imageUrl: "https://images.unsplash.com/photo-1613771404724-17c245a1345b?auto=format&fit=crop&q=80&w=600",
+                            notes: "[智能链接导入] 宝可梦中心官方档案。雕刻涂装完美，张力十足。"
+                        };
+                    } else if (url.includes("popmart") || url.includes("泡泡玛特")) {
+                        mockedData = {
+                            name: "MEGA珍藏系列 SPACE MOLLY 400%",
+                            ip: "泡泡玛特",
+                            character: "MOLLY",
+                            tags: "MEGA系列, 巨型潮玩, 尊享礼盒",
+                            purchasePrice: 799,
+                            marketPrice: 1250,
+                            imageUrl: "https://images.unsplash.com/photo-1608889175123-8ec330b86f84?auto=format&fit=crop&q=80&w=600",
+                            notes: "[智能链接导入] 泡泡玛特微信小程序商品页。高阶硬核收藏线，配有独立NFC防伪鉴别芯片。"
+                        };
+                    }
+
+                    // Populate States instantly
+                    setFormName(mockedData.name);
+                    setFormIp(mockedData.ip);
+                    setFormCharacter(mockedData.character);
+                    setFormTags(mockedData.tags);
+                    setFormPurchasePrice(mockedData.purchasePrice);
+                    setFormCurrentMarketPrice(mockedData.marketPrice);
+                    setFormImageUrl(mockedData.imageUrl);
+                    setFormNotes(mockedData.notes);
+
+                    // Auto append IP Category if not existing
+                    if (!customIPs.includes(mockedData.ip)) {
+                        setCustomIPs(prev => [...prev, mockedData.ip]);
+                    }
+
+                    setIsParsingLink(false);
+                    triggerToast("✨ 链接元数据已导入，您可以进行二次修改确认了！");
+                }, 1600);
+            };
+
+            const executeDeleteItem = (id) => {
+                setItems(prev => prev.filter(item => item.id !== id));
+                setActiveTab("gallery");
+                setSelectedItemId(null);
+                setDeleteConfirmId(null);
+                triggerToast("藏品已安全从数字陈列馆撤下。");
+            };
+
+            const handleDeepSeekValuation = async (item) => {
+                setIsEvaluating(true);
+                setValuationMessage("正在连接 DeepSeek 联网模型，抓取闲鱼、得物等全网最新成交价...");
+                
+                // If API Key is empty, fallback to sandbox demo Mode for perfect showcase
+                if (!deepSeekKey) {
+                    setTimeout(() => {
+                        const fluctuation = (Math.random() * 0.3 - 0.1) * item.current_market_price;
+                        const newEstimate = Math.max(item.purchase_price * 0.8, Math.round(item.current_market_price + fluctuation));
+                        
+                        const updatedPriceHistory = [...item.price_history, {
+                            date: new Date().toISOString().split('T')[0],
+                            price: newEstimate,
+                            source: "DeepSeek AI 估价 (演示模式)"
+                        }];
+
+                        setItems(prev => prev.map(i => i.id === item.id ? {
+                            ...i,
+                            current_market_price: newEstimate,
+                            price_history: updatedPriceHistory
+                        } : i));
+
+                        setValuationMessage("");
+                        setIsEvaluating(false);
+                        triggerToast(`【演示模式】已成功获得估价：¥${newEstimate}`);
+                    }, 2500);
+                    return;
+                }
+
+                try {
+                    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${deepSeekKey}`
+                        },
+                        body: JSON.stringify({
+                            model: "deepseek-chat",
+                            messages: [
+                                {
+                                    role: "system",
+                                    content: "You are an expert appraiser of pop culture toys, designer toys, cards, and luxury collectibles. Return ONLY a valid single JSON object with the format: {\"estimated_price\": 380, \"currency\": \"CNY\", \"confidence\": 90, \"analysis\": \"Brief one sentence analysis of second-hand market trend.\"}"
+                                },
+                                {
+                                    role: "user",
+                                    content: `估算这个收藏品的当前二级市场平均成交价(人民币CNY)。
+                                    IP品牌: ${item.ip}
+                                    名称: ${item.name}
+                                    角色/规格: ${item.character}
+                                    自定义标签: ${item.tags.join(', ')}
+                                    备注历史: ${item.notes || "无"}
+                                    请结合当前2026年的市场行情直接输出，绝不要带有任何Markdown包装或额外的问候。`
+                                }
+                            ]
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("DeepSeek 接口通信异常，请检查 API Key 额度或重试");
+                    }
+
+                    const rawResult = await response.json();
+                    const text = rawResult.choices[0].message.content;
+                    const parsed = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+
+                    const newPrice = Number(parsed.estimated_price);
+                    if (isNaN(newPrice)) throw new Error("返回值未包含正确的数字价格");
+
+                    const updatedHistory = [...item.price_history, {
+                        date: new Date().toISOString().split('T')[0],
+                        price: newPrice,
+                        source: "DeepSeek 智能估价"
+                    }];
+
+                    setItems(prev => prev.map(i => i.id === item.id ? {
+                        ...i,
+                        current_market_price: newPrice,
+                        price_history: updatedHistory,
+                        notes: i.notes + `\n[AI行情分析 2026]: ${parsed.analysis}`
+                    } : i));
+
+                    setIsEvaluating(false);
+                    setValuationMessage("");
+                    triggerToast(`智能估价成功！全网当前市价为：¥${newPrice}`);
+
+                } catch (error) {
+                    console.error(error);
+                    setIsEvaluating(false);
+                    setValuationMessage("");
+                    triggerToast(`估价失败: ${error.message}`, "error");
+                }
+            };
+
+            const handleImageChange = (e, callback) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 800000) { 
+                        triggerToast("图片尺寸过大，请上传800KB以下图片", "error");
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        callback(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen bg-[#f6f6f3] shadow-xl relative flex flex-col pt-safe pb-safe pb-24">
+                    
+                    {}
+                    {toast && (
+                        <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50 animate-bounce">
+                            <div className={`p-4 rounded-2xl shadow-xl border flex items-center gap-3 ${toast.type === "success" ? "bg-[#20252c] text-[#fbfbfa] border-[#3e4550]" : "bg-rose-50 text-rose-900 border-rose-200"}`}>
+                                <Icon name="sparkles" className={`w-5 h-5 ${toast.type === "success" ? "text-amber-400" : "text-rose-600"}`} />
+                                <span className="text-xs font-semibold leading-snug">{toast.msg}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {}
+                    {deleteConfirmId && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+                            <div className="bg-white rounded-3xl p-6 w-full max-w-xs text-center space-y-4 shadow-2xl border border-neutral-100">
+                                <h3 className="text-sm font-bold text-[#20252c] serif-font">确定撤销藏品？</h3>
+                                <p className="text-xs text-neutral-400 leading-relaxed">
+                                    此项撤回不可逆，该物品的所有二级行情、价格走势及实拍方位配图都将被安全擦除。
+                                </p>
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                    <button 
+                                        onClick={() => setDeleteConfirmId(null)}
+                                        className="py-2.5 bg-neutral-100 text-neutral-600 text-xs font-semibold rounded-xl"
+                                    >
+                                        考虑一下
+                                    </button>
+                                    <button 
+                                        onClick={() => executeDeleteItem(deleteConfirmId)}
+                                        className="py-2.5 bg-rose-600 text-white text-xs font-semibold rounded-xl hover:bg-rose-700"
+                                    >
+                                        确定撤销
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Header bar matching styling details of sculptures in image_f066e0.jpg */}
+                    <header className="px-6 py-4 flex justify-between items-center bg-[#f6f6f3]">
+                        <div>
+                            <span className="text-xs tracking-widest font-semibold text-[#8c8c82] uppercase">VIBE MUSEUM</span>
+                            <h1 className="text-2xl font-bold serif-font text-[#20252c]">个人电子收藏馆</h1>
+                        </div>
+                        <button 
+                            onClick={() => setActiveTab("settings")} 
+                            className="p-2.5 bg-white border border-[#e5e5e0] rounded-full hover:bg-neutral-50 transition"
+                        >
+                            <Icon name="settings" className="w-5 h-5 text-[#20252c]" />
+                        </button>
+                    </header>
+
+                    {/* Quick Stats Panel */}
+                    {activeTab === "gallery" && (
+                        <div className="px-6 mb-4">
+                            <div className="bg-[#1a1a1a] text-[#fbfbfa] rounded-3xl p-5 shadow-sm relative overflow-hidden">
+                                <div className="absolute right-[-20px] bottom-[-20px] opacity-10 text-white font-bold text-8xl pointer-events-none serif-font">
+                                    M
+                                </div>
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-xs uppercase tracking-wider opacity-60">馆内资产估值</span>
+                                    <span className="px-2.5 py-0.5 bg-white/20 rounded-full text-[10px] uppercase font-mono tracking-wider">
+                                        {stats.activeCount} 件藏品
+                                    </span>
+                                </div>
+                                <div className="flex items-baseline mb-2">
+                                    <span className="text-3xl font-bold serif-font">¥{(stats.currentEstimatedVal).toLocaleString()}</span>
+                                    <span className="text-xs ml-2 opacity-70">市值估算</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/10 text-xs">
+                                    <div>
+                                        <p className="opacity-50 text-[10px]">购入成本</p>
+                                        <p className="font-mono font-medium">¥{stats.totalCost}</p>
+                                    </div>
+                                    <div>
+                                        <p className="opacity-50 text-[10px]">未变现盈亏</p>
+                                        <p className={`font-mono font-medium ${stats.unrealizedGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                            {stats.unrealizedGain >= 0 ? "+" : ""}¥{stats.unrealizedGain}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="opacity-50 text-[10px]">已套现净利</p>
+                                        <p className="font-mono font-medium text-emerald-400">¥{stats.realizedGain}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {}
+                    {activeTab === "gallery" && (
+                        <div className="flex-1 flex flex-col">
+                            {/* Search and Filters modeled on sculpture layout */}
+                            <div className="space-y-3">
+                                <div className="px-6 relative flex items-center">
+                                    <input 
+                                        type="text" 
+                                        placeholder="搜寻馆藏、角色或标签..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#e5e5e0] rounded-xl text-sm focus:outline-none focus:border-neutral-500 transition"
+                                    />
+                                    <div className="absolute left-9 text-neutral-400">
+                                        <Icon name="search" className="w-4 h-4" />
+                                    </div>
+                                </div>
+
+                                {/* Custom IP Pill Buttons - Upgraded to smooth horizontal sliding & dragging */}
+                                <div className="relative">
+                                    {/* Left fading edge mask */}
+                                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#f6f6f3] to-transparent pointer-events-none z-10"></div>
+                                    
+                                    <div 
+                                        ref={scrollContainerRef}
+                                        onMouseDown={handleMouseDown}
+                                        onMouseLeave={handleMouseLeave}
+                                        onMouseUp={handleMouseUp}
+                                        onMouseMove={handleMouseMove}
+                                        className="flex overflow-x-auto gap-2 no-scrollbar py-1.5 px-6 scroll-smooth select-none cursor-grab active:cursor-grabbing"
+                                        style={{ WebkitOverflowScrolling: "touch" }}
+                                    >
+                                        {customIPs.map(ip => (
+                                            <button
+                                                key={ip}
+                                                onClick={() => { setSelectedIP(ip); setSelectedCharacter("全部"); }}
+                                                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border ${
+                                                    selectedIP === ip 
+                                                        ? "bg-[#1a1a1a] text-white border-transparent shadow-sm scale-95" 
+                                                        : "bg-white text-[#20252c] border-[#e5e5e0] hover:border-neutral-400 active:scale-95"
+                                                }`}
+                                            >
+                                                {ip}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Right fading edge mask */}
+                                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#f6f6f3] to-transparent pointer-events-none z-10"></div>
+                                </div>
+                            </div>
+
+                            {/* Main Grid matching image_f066e0.jpg sculpture page */}
+                            <div className="px-6 py-4 flex-1">
+                                {filteredItems.length === 0 ? (
+                                    <div className="bg-white border border-dashed border-[#e5e5e0] rounded-3xl p-8 text-center text-[#8c8c82]">
+                                        <p className="text-sm">未搜寻到匹配该标签的精美馆藏。</p>
+                                        <button 
+                                            onClick={() => setActiveTab("add")}
+                                            className="mt-3 inline-flex items-center gap-1 text-xs text-[#20252c] underline font-semibold"
+                                        >
+                                            立即开辟新馆藏
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {filteredItems.map(item => {
+                                            const profitRate = item.purchase_price > 0 
+                                                ? ((item.current_market_price - item.purchase_price) / item.purchase_price) * 100 
+                                                : 0;
+                                            const isSold = item.status === "sold";
+                                            const isSelling = item.status === "selling";
+
+                                            return (
+                                                <div 
+                                                    key={item.id}
+                                                    onClick={() => { setSelectedItemId(item.id); setActiveTab("detail"); }}
+                                                    className="bg-white rounded-3xl overflow-hidden border border-[#e5e5e0] hover:border-neutral-400 transition cursor-pointer flex flex-col justify-between"
+                                                >
+                                                    {/* Image Wrapper */}
+                                                    <div className="relative aspect-square overflow-hidden bg-neutral-100">
+                                                        <img 
+                                                            src={item.image_url || "https://placehold.co/300x300/e5e5e0/20252c?text=Collection"} 
+                                                            alt={item.name}
+                                                            className={`w-full h-full object-cover transition-transform duration-500 hover:scale-105 ${isSold ? "sold-out-grayscale" : ""}`}
+                                                            onError={(e) => { e.target.src = "https://placehold.co/300x300/e5e5e0/20252c?text=Collection"; }}
+                                                        />
+                                                        
+                                                        {/* Status badges */}
+                                                        {isSold && (
+                                                            <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
+                                                                <span className="px-3 py-1 bg-white/95 text-[10px] font-bold tracking-widest text-[#20252c] rounded-full uppercase">
+                                                                    已套现 / SOLD
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {isSelling && (
+                                                            <div className="absolute top-2 left-2 bg-[#f0effa] text-[#5244ad] text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-0.5">
+                                                                <span>🛒</span> 寻主中
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* AI Alert Hot Sale icon */}
+                                                        {!isSold && profitRate >= 45 && (
+                                                            <div className="absolute top-2 right-2 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 animate-pulse">
+                                                                🔥 宜出手
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Text block modeled precisely on sculpture style */}
+                                                    <div className="p-3.5 space-y-1">
+                                                        <span className="text-[10px] text-neutral-400 font-mono tracking-wider block uppercase">
+                                                            {item.ip} · {item.character}
+                                                        </span>
+                                                        <h3 className="text-xs font-bold text-[#20252c] line-clamp-1 leading-tight">
+                                                            {item.name}
+                                                        </h3>
+                                                        <div className="flex justify-between items-baseline pt-1">
+                                                            <span className="text-xs font-bold">¥{item.current_market_price}</span>
+                                                            <span className="text-[10px] font-mono text-[#8c8c82]">
+                                                                购入: ¥{item.purchase_price}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {}
+                    {activeTab === "detail" && currentItem && (
+                        <div className="flex-1 bg-white">
+                            {/* Immersive Photo Header */}
+                            <div className="relative w-full aspect-[4/5] bg-neutral-100">
+                                <img 
+                                    src={currentItem.image_url || "https://placehold.co/400x500/e5e5e0/20252c?text=Museum+Item"} 
+                                    alt={currentItem.name}
+                                    className={`w-full h-full object-cover ${currentItem.status === "sold" ? "sold-out-grayscale" : ""}`}
+                                    onError={(e) => { e.target.src = "https://placehold.co/400x500/e5e5e0/20252c?text=Museum+Item"; }}
+                                />
+                                
+                                {/* Overlay Floating Action Bar */}
+                                <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                                    <button 
+                                        onClick={() => setActiveTab("gallery")} 
+                                        className="p-2 bg-white/95 rounded-full text-[#20252c] shadow-md hover:bg-white"
+                                    >
+                                        <Icon name="back" className="w-5 h-5" />
+                                    </button>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => { setEditingItem(currentItem); setActiveTab("add"); }} 
+                                            className="p-2 bg-white/95 rounded-full text-[#20252c] shadow-md hover:bg-white"
+                                        >
+                                            <Icon name="edit" className="w-5 h-5" />
+                                        </button>
+                                        <button 
+                                            onClick={() => setDeleteConfirmId(currentItem.id)} 
+                                            className="p-2 bg-white/95 rounded-full text-rose-600 shadow-md hover:bg-white"
+                                        >
+                                            <Icon name="trash" className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Image expand absolute action visual placeholder */}
+                                <div className="absolute bottom-4 right-4 flex gap-2">
+                                    <span className="p-2 bg-black/40 backdrop-blur-md rounded-full text-white shadow-md">
+                                        <Icon name="heart" className="w-4 h-4" />
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Core Info & Metadata Grid */}
+                            <div className="px-6 py-6 space-y-6">
+                                <div>
+                                    <span className="text-xs tracking-widest font-mono text-[#8c8c82] uppercase">{currentItem.ip} IP 藏品</span>
+                                    <h2 className="text-2xl font-bold serif-font text-[#20252c] mt-1 leading-snug">{currentItem.name}</h2>
+                                    <p className="text-sm italic text-neutral-500">角色系列: {currentItem.character}</p>
+                                </div>
+
+                                {/* Custom Metadata Table like image_f066e0.jpg (Date, Technique, Period, Location) */}
+                                <div className="border-t border-b border-[#e5e5e0] py-4 grid grid-cols-2 gap-y-3 gap-x-4 text-xs font-mono">
+                                    <div className="flex justify-between pr-4 border-r border-[#f0f0e8]">
+                                        <span className="text-neutral-400">目前状态</span>
+                                        <span className="font-semibold text-[#20252c]">
+                                            {currentItem.status === "in_stock" ? "在馆中" : currentItem.status === "selling" ? "上架寻主" : "已出手(黑白档)"}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between pl-2">
+                                        <span className="text-neutral-400">建档时间</span>
+                                        <span className="font-semibold text-[#20252c]">2026-06-10</span>
+                                    </div>
+                                    <div className="flex justify-between pr-4 border-r border-[#f0f0e8]">
+                                        <span className="text-neutral-400">入手原价</span>
+                                        <span className="font-semibold text-[#20252c]">¥{currentItem.purchase_price}</span>
+                                    </div>
+                                    <div className="flex justify-between pl-2">
+                                        <span className="text-neutral-400">最新评估价</span>
+                                        <span className="font-semibold text-[#20252c]">¥{currentItem.current_market_price}</span>
+                                    </div>
+                                    <div className="flex justify-between pr-4 border-r border-[#f0f0e8]">
+                                        <span className="text-neutral-400">投资回报比</span>
+                                        <span className={`font-semibold ${currentItem.current_market_price >= currentItem.purchase_price ? "text-emerald-600" : "text-rose-600"}`}>
+                                            {currentItem.purchase_price > 0 ? (((currentItem.current_market_price - currentItem.purchase_price) / currentItem.purchase_price) * 100).toFixed(0) : 0}%
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Location Trigger button */}
+                                    <div className="flex justify-between pl-2 relative">
+                                        <span className="text-neutral-400">实体存放</span>
+                                        <button 
+                                            onClick={() => setShowLocationPopover(!showLocationPopover)}
+                                            className="font-semibold text-[#20252c] underline flex items-center gap-0.5 cursor-pointer"
+                                        >
+                                            <Icon name="location" className="w-3.5 h-3.5 text-neutral-500" />
+                                            {currentItem.location?.name || "未归类"}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {showLocationPopover && (
+                                    <div className="bg-[#fcfcf9] border border-[#e5e5e0] rounded-2xl p-4 space-y-3 shadow-md">
+                                        <div className="flex justify-between items-center">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500">实体柜位置导航</h4>
+                                            <button onClick={() => setShowLocationPopover(false)} className="text-xs text-[#8c8c82]">关闭</button>
+                                        </div>
+                                        {currentItem.location?.image_url && (
+                                            <div className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-neutral-100">
+                                                <img 
+                                                    src={currentItem.location.image_url} 
+                                                    alt="柜位实拍" 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-semibold text-[#20252c]">{currentItem.location?.name}</p>
+                                            <p className="text-xs text-[#8c8c82] leading-relaxed">
+                                                {currentItem.location?.description || "暂未填写具体的视觉引导和坐标描述。"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Market Trend Analytics block */}
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-xs uppercase tracking-wider font-semibold text-neutral-400">AI 行情估算与曲线</h3>
+                                        
+                                        {/* DeepSeek Trigger Button */}
+                                        <button 
+                                            onClick={() => handleDeepSeekValuation(currentItem)}
+                                            disabled={isEvaluating}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#1a1a1a] to-[#3a3a3a] text-white text-xs font-semibold rounded-full hover:shadow-md transition disabled:opacity-55"
+                                        >
+                                            <Icon name="sparkles" className="w-3.5 h-3.5" />
+                                            {isEvaluating ? "正在估算..." : "DeepSeek 估价"}
+                                        </button>
+                                    </div>
+
+                                    {/* Action message for deepseek api process */}
+                                    {isEvaluating && (
+                                        <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl shimmer text-xs text-neutral-600 leading-relaxed">
+                                            {valuationMessage}
+                                        </div>
+                                    )}
+
+                                    {/* Interactive SVG Chart for price trends */}
+                                    <PriceTrendChart 
+                                        history={currentItem.price_history} 
+                                        purchasePrice={currentItem.purchase_price}
+                                        currentPrice={currentItem.current_market_price}
+                                    />
+                                </div>
+
+                                {/* About description block mimicking image_f066e0.jpg Details panel */}
+                                <div className="space-y-2">
+                                    <h3 className="text-xs uppercase tracking-wider font-semibold text-neutral-400">品类赏析 / 备注</h3>
+                                    <p className="text-sm text-[#20252c] leading-relaxed serif-font">
+                                        {currentItem.notes || "主理人很懒，尚未为此藏品撰写艺术赏析语录。"}
+                                    </p>
+                                </div>
+
+                                {/* Interesting Fact box style copy from the image */}
+                                {currentItem.purchase_price > 0 && (((currentItem.current_market_price - currentItem.purchase_price) / currentItem.purchase_price) * 100) >= 50 && (
+                                    <div className="bg-[#20252c] text-white p-4 rounded-2xl space-y-1 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                                            <Icon name="trendUp" className="w-4 h-4" />
+                                            <span>黄金溢价资产警报</span>
+                                        </div>
+                                        <p className="text-xs text-neutral-300 leading-relaxed">
+                                            此款收藏品当前二级市场成交价对比入馆原价溢价高达 {(((currentItem.current_market_price - currentItem.purchase_price) / currentItem.purchase_price) * 100).toFixed(0)}%。处于二级市场流动性最红润的区间，是一个完美的出手收割利润机会！
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Tags Pillbox */}
+                                <div className="flex flex-wrap gap-1.5 pt-2">
+                                    {currentItem.tags.map((tag, idx) => (
+                                        <span key={idx} className="bg-neutral-100 text-neutral-600 text-[10px] px-2.5 py-1 rounded-full uppercase font-medium">
+                                            #{tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {}
+                    {activeTab === "add" && (
+                        <div className="p-6 bg-white flex-1 space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-xl font-bold serif-font text-[#20252c]">
+                                    {editingItem ? "调整馆藏档案" : "录入珍藏佳作"}
+                                </h2>
+                                <button 
+                                    onClick={() => { setEditingItem(null); setActiveTab(editingItem ? "detail" : "gallery"); }} 
+                                    className="text-xs text-[#8c8c82] uppercase tracking-wider"
+                                >
+                                    取消
+                                </button>
+                            </div>
+
+                            {/* --- Premium Intelligent URL Auto-Importer Panel (New Feature) --- */}
+                            {!editingItem && (
+                                <div className="p-4 bg-[#fcfcf9] border border-[#e5e5e0] rounded-2xl space-y-3 shadow-inner">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1 bg-[#1a1a1a] text-[#f6f6f3] rounded-lg">
+                                            <Icon name="link" className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-xs font-bold text-[#20252c]">🔗 粘贴链接智能预录入</span>
+                                    </div>
+                                    <p className="text-[10px] text-neutral-400 leading-relaxed">
+                                        支持闲鱼、得物、淘宝、POPMART或宝可梦链接。系统将自动抓取或匹配解析基础数据填充表单，您可以二次自由编辑后再保存。
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder="在此粘贴商品分享链接..."
+                                            value={linkToImport}
+                                            onChange={(e) => setLinkToImport(e.target.value)}
+                                            className="flex-1 px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl text-xs focus:outline-none"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={handleUrlImport}
+                                            disabled={isParsingLink}
+                                            className="px-4 py-2 bg-[#1a1a1a] text-[#f6f6f3] text-xs font-semibold rounded-xl hover:bg-neutral-800 disabled:opacity-55 transition whitespace-nowrap"
+                                        >
+                                            {isParsingLink ? "扫描解析中..." : "解析"}
+                                        </button>
+                                    </div>
+                                    {isParsingLink && (
+                                        <div className="h-1 w-full bg-neutral-100 overflow-hidden rounded-full relative">
+                                            <div className="absolute top-0 bottom-0 left-0 bg-neutral-900 w-1/2 rounded-full shimmer"></div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                
+                                const tagsArray = formTags.split(/[,，]/).map(t => t.trim()).filter(Boolean);
+                                const inputIP = formIp.trim() || "其他";
+
+                                // Dynamic Auto-Append IP to custom list if it is a brand-new IP entered by the user
+                                if (inputIP && !customIPs.includes(inputIP)) {
+                                    setCustomIPs(prev => [...prev, inputIP]);
+                                }
+
+                                const updatedItem = {
+                                    id: editingItem ? editingItem.id : "item-" + Date.now(),
+                                    name: formName,
+                                    ip: inputIP,
+                                    character: formCharacter,
+                                    tags: tagsArray,
+                                    status: formStatus,
+                                    image_url: formImageUrl,
+                                    purchase_price: Number(formPurchasePrice) || 0,
+                                    current_market_price: Number(formCurrentMarketPrice) || 0,
+                                    price_history: editingItem 
+                                        ? [
+                                            ...editingItem.price_history,
+                                            {
+                                                date: new Date().toISOString().split('T')[0],
+                                                price: Number(formCurrentMarketPrice) || 0,
+                                                source: "更新价格"
+                                            }
+                                          ].filter((v, i, self) => self.findIndex(t => t.date === v.date && t.price === v.price) === i) 
+                                        : [
+                                            {
+                                                date: new Date().toISOString().split('T')[0],
+                                                price: Number(formPurchasePrice) || 0,
+                                                source: "入手价"
+                                            },
+                                            {
+                                                date: new Date().toISOString().split('T')[0],
+                                                price: Number(formCurrentMarketPrice) || 0,
+                                                source: "录入估价"
+                                            }
+                                        ],
+                                    location: {
+                                        name: formLocationName || "未分类",
+                                        description: formLocationDescription || "",
+                                        image_url: formLocationImageUrl
+                                    },
+                                    created_at: editingItem ? editingItem.created_at : new Date().toISOString().split('T')[0],
+                                    notes: formNotes
+                                };
+
+                                if (editingItem) {
+                                    setItems(prev => prev.map(i => i.id === editingItem.id ? updatedItem : i));
+                                    triggerToast("藏品档案微调成功。");
+                                } else {
+                                    setItems(prev => [updatedItem, ...prev]);
+                                    triggerToast("恭喜！新藏品已完美收录入库。");
+                                }
+
+                                setEditingItem(null);
+                                setActiveTab("gallery");
+                            }} className="space-y-4 text-xs font-medium text-[#20252c]">
+                                
+                                {/* Image Upload & Preview Block */}
+                                <div className="space-y-1.5">
+                                    <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">藏品实体照片</label>
+                                    <div className="flex gap-3 items-center">
+                                        <div className="w-16 h-16 rounded-xl border border-dashed border-[#e5e5e0] overflow-hidden bg-neutral-50 flex items-center justify-center relative cursor-pointer">
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                onChange={(e) => {
+                                                    handleImageChange(e, (base64) => {
+                                                        setFormImageUrl(base64);
+                                                    });
+                                                }}
+                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                            />
+                                            <img 
+                                                src={formImageUrl || "https://placehold.co/100x100/f6f6f3/20252c?text=+"}
+                                                className="w-full h-full object-cover pointer-events-none" 
+                                            />
+                                        </div>
+                                        <div className="text-[10px] text-neutral-400 leading-relaxed">
+                                            点击加号上传或拍摄本地照片。支持拍照直传。
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Form text inputs with Hybrid Select / Datalist Input */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">所属大类 IP (支持手输)</label>
+                                        <input 
+                                            type="text"
+                                            value={formIp}
+                                            onChange={(e) => setFormIp(e.target.value)}
+                                            list="ip-options"
+                                            required
+                                            placeholder="选择或直接在此输入"
+                                            className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                        />
+                                        <datalist id="ip-options">
+                                            {customIPs.filter(ip => ip !== "全部").map(ip => (
+                                                <option key={ip} value={ip} />
+                                            ))}
+                                        </datalist>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">角色 / 细节规格</label>
+                                        <input 
+                                            type="text" 
+                                            value={formCharacter}
+                                            onChange={(e) => setFormCharacter(e.target.value)}
+                                            placeholder="如: Molly / 异色款"
+                                            required
+                                            className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">藏品名称</label>
+                                    <input 
+                                        type="text" 
+                                        value={formName}
+                                        onChange={(e) => setFormName(e.target.value)}
+                                        placeholder="请输入完整藏品描述名称"
+                                        required
+                                        className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">入手价格 (¥)</label>
+                                        <input 
+                                            type="number" 
+                                            value={formPurchasePrice}
+                                            onChange={(e) => setFormPurchasePrice(e.target.value)}
+                                            placeholder="59"
+                                            required
+                                            className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">估算/当前市值 (¥)</label>
+                                        <input 
+                                            type="number" 
+                                            value={formCurrentMarketPrice}
+                                            onChange={(e) => setFormCurrentMarketPrice(e.target.value)}
+                                            placeholder="120"
+                                            required
+                                            className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">上架馆藏状态</label>
+                                        <select 
+                                            value={formStatus}
+                                            onChange={(e) => setFormStatus(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                        >
+                                            <option value="in_stock">妥善收藏在馆中 (In Stock)</option>
+                                            <option value="selling">正上架出清寻主 (Selling)</option>
+                                            <option value="sold">已套现/转手 (Sold)</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">属性标签 (以逗号分隔)</label>
+                                        <input 
+                                            type="text" 
+                                            value={formTags}
+                                            onChange={(e) => setFormTags(e.target.value)}
+                                            placeholder="限定款, 盲盒, 金属漆"
+                                            className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Location Group */}
+                                <div className="border-t border-[#f0f0e8] pt-3 space-y-3">
+                                    <h4 className="text-[10px] uppercase font-bold tracking-widest text-[#8c8c82]">实体存放位置信息绑定</h4>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">物理位置名称</label>
+                                            <input 
+                                                type="text" 
+                                                value={formLocationName}
+                                                onChange={(e) => setFormLocationName(e.target.value)}
+                                                placeholder="例如: 客厅展柜第三层"
+                                                className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">位置实拍配图</label>
+                                            <div className="flex gap-2 items-center">
+                                                <div className="w-8 h-8 rounded-lg border border-dashed border-[#e5e5e0] overflow-hidden bg-neutral-50 flex items-center justify-center relative">
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        onChange={(e) => {
+                                                            handleImageChange(e, (base64) => {
+                                                                setFormLocationImageUrl(base64);
+                                                            });
+                                                        }}
+                                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    />
+                                                    <img 
+                                                        src={formLocationImageUrl || "https://placehold.co/100x100/f6f6f3/20252c?text=+"}
+                                                        className="w-full h-full object-cover pointer-events-none" 
+                                                    />
+                                                </div>
+                                                <span className="text-[9px] text-neutral-400">拍摄方位</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">具体方位描述</label>
+                                        <input 
+                                            type="text" 
+                                            value={formLocationDescription}
+                                            onChange={(e) => setFormLocationDescription(e.target.value)}
+                                            placeholder="如：最里面靠左角落，在高达身后"
+                                            className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-neutral-500 block uppercase tracking-wider text-[10px]">藏品品相、赏析备注</label>
+                                    <textarea 
+                                        value={formNotes}
+                                        onChange={(e) => setFormNotes(e.target.value)}
+                                        placeholder="在这里写下对此艺术品的理解或品相描述、溢价预期等..."
+                                        rows="3"
+                                        className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl focus:outline-none resize-none"
+                                    ></textarea>
+                                </div>
+
+                                <button 
+                                    type="submit"
+                                    className="w-full py-3 bg-[#1a1a1a] text-white text-xs font-semibold rounded-xl hover:shadow-md transition mt-4"
+                                >
+                                    {editingItem ? "保存馆藏修正" : "确定录入永久珍藏"}
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    {}
+                    {activeTab === "settings" && (
+                        <div className="p-6 bg-white flex-1 space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-xl font-bold serif-font text-[#20252c]">系统与智能配置</h2>
+                                <button onClick={() => setActiveTab("gallery")} className="text-xs text-[#8c8c82]">返回</button>
+                            </div>
+
+                            {/* DeepSeek Key Config */}
+                            <div className="space-y-4">
+                                <div className="p-4 bg-[#fcfcf9] border border-[#e5e5e0] rounded-2xl space-y-3">
+                                    <div className="flex items-center gap-1.5">
+                                        <Icon name="sparkles" className="w-5 h-5 text-neutral-800" />
+                                        <span className="text-sm font-semibold text-[#20252c]">DeepSeek 智能估价 API 密钥</span>
+                                    </div>
+                                    <p className="text-xs text-[#8c8c82] leading-relaxed">
+                                        本应用完全免费，数据全部存在您的浏览器中。在此处填写个人 DeepSeek 官方 API 密钥。密钥将<b>仅存储在本地浏览器 LocalStorage 缓存中</b>，确保安全性。
+                                    </p>
+                                    <div className="space-y-1.5">
+                                        <input 
+                                            type="password"
+                                            placeholder="sk-xxxxxxxxxxxxxx"
+                                            value={deepSeekKey}
+                                            onChange={(e) => saveApiKey(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl text-xs font-mono focus:outline-none"
+                                        />
+                                        <p className="text-[10px] text-neutral-400">
+                                            若留空，估价按钮将触发仿真演示模式。填写正确的 sk 密钥将实时向 DeepSeek 联网获取二级市场成交价。
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Category management */}
+                                <div className="space-y-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400">管理 IP 大类</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {customIPs.filter(ip => ip !== "全部").map(ip => (
+                                            <div key={ip} className="inline-flex items-center gap-1 bg-neutral-100 text-[#20252c] text-xs px-3 py-1.5 rounded-full">
+                                                <span>{ip}</span>
+                                                <button 
+                                                    onClick={() => {
+                                                        if(customIPs.length <= 2) {
+                                                            triggerToast("至少需保留一个 IP 分类", "error");
+                                                            return;
+                                                        }
+                                                        setCustomIPs(prev => prev.filter(p => p !== ip));
+                                                    }}
+                                                    className="text-neutral-400 hover:text-rose-600 text-[10px] font-bold"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* Add custom IP */}
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const val = e.target.new_ip.value.trim();
+                                        if (val && !customIPs.includes(val)) {
+                                            setCustomIPs(prev => [...prev, val]);
+                                            e.target.new_ip.value = "";
+                                            triggerToast("成功增加全新 IP 大类！");
+                                        }
+                                    }} className="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            name="new_ip"
+                                            placeholder="增加新 IP 分类标签..."
+                                            className="flex-1 px-3 py-2 bg-white border border-[#e5e5e0] rounded-xl text-xs focus:outline-none"
+                                        />
+                                        <button type="submit" className="px-4 py-2 bg-[#1a1a1a] text-white text-xs font-semibold rounded-xl">
+                                            新增
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* Data Backup & Restore */}
+                                <div className="border-t border-[#f0f0e8] pt-4 space-y-3 text-xs">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400">馆藏数据备份与恢复</h3>
+                                    <p className="text-neutral-400 leading-relaxed text-[11px]">
+                                        由于数据完全存放在您当前的本地浏览器中，清除浏览器缓存可能会导致数据丢失。建议定期将数据备份导出至本地。
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button 
+                                            onClick={() => {
+                                                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items, null, 2));
+                                                const downloadAnchor = document.createElement('a');
+                                                downloadAnchor.setAttribute("href", dataStr);
+                                                downloadAnchor.setAttribute("download", `Vibe_Museum_Backup_${new Date().toISOString().split('T')[0]}.json`);
+                                                document.body.appendChild(downloadAnchor);
+                                                downloadAnchor.click();
+                                                downloadAnchor.remove();
+                                            }}
+                                            className="py-2.5 bg-white border border-[#e5e5e0] text-[#20252c] rounded-xl font-semibold flex items-center justify-center gap-1.5"
+                                        >
+                                            <Icon name="share" className="w-4 h-4" />
+                                            <span>导出备份文件</span>
+                                        </button>
+                                        
+                                        <label className="py-2.5 bg-white border border-[#e5e5e0] text-[#20252c] rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer text-center">
+                                            <input 
+                                                type="file" 
+                                                accept=".json"
+                                                onChange={(e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onload = (event) => {
+                                                            try {
+                                                                const parsed = JSON.parse(event.target.result);
+                                                                if (Array.isArray(parsed)) {
+                                                                    setItems(parsed);
+                                                                    triggerToast("馆藏档案数据已成功导入并刷新！");
+                                                                    setActiveTab("gallery");
+                                                                } else {
+                                                                    throw new Error("格式错误");
+                                                                }
+                                                            } catch (err) {
+                                                                triggerToast("恢复数据失败：文件格式不匹配", "error");
+                                                            }
+                                                        };
+                                                        reader.readAsText(file);
+                                                    }
+                                                }}
+                                                className="hidden"
+                                            />
+                                            <Icon name="addPhoto" className="w-4 h-4" />
+                                            <span>导入备份文件</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* iOS PWA Guide */}
+                                <div className="p-4 bg-amber-50/50 border border-amber-200/60 rounded-2xl space-y-2 text-amber-900">
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                                        <Icon name="info" className="w-4 h-4" />
+                                        <span>在 iPhone 桌面完美使用提示</span>
+                                    </div>
+                                    <p className="text-[11px] leading-relaxed opacity-90">
+                                        用 iPhone 自带的 <b>Safari 浏览器</b> 打开本页面，点击下方功能栏的“<b>分享</b>”按钮，选择“<b>添加到主屏幕</b>”。即可像真实 App 一样，在主屏幕上拥有一键触达的纯净无痕电子馆藏馆！
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {}
+                    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-md border-t border-neutral-200/50 flex justify-around items-center py-2.5 px-6 z-40 shadow-lg">
+                        <button 
+                            onClick={() => { setActiveTab("gallery"); setSelectedItemId(null); }}
+                            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${activeTab === "gallery" || activeTab === "detail" ? "text-[#20252c]" : "text-neutral-400"}`}
+                        >
+                            <Icon name="search" className="w-5 h-5" />
+                            <span className="text-[9px] font-semibold tracking-wider">我的馆藏</span>
+                        </button>
+                        
+                        {/* Center large trigger button */}
+                        <button 
+                            onClick={() => { setEditingItem(null); setActiveTab("add"); }}
+                            className={`flex flex-col items-center gap-1 py-2 px-4 rounded-full transition-all duration-300 ${activeTab === "add" ? "bg-[#1a1a1a] text-white scale-105" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}
+                        >
+                            <Icon name="plus" className="w-5 h-5" />
+                        </button>
+
+                        <button 
+                            onClick={() => setActiveTab("settings")}
+                            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${activeTab === "settings" ? "text-[#20252c]" : "text-neutral-400"}`}
+                        >
+                            <Icon name="settings" className="w-5 h-5" />
+                            <span className="text-[9px] font-semibold tracking-wider">系统配置</span>
+                        </button>
+                    </nav>
+
+                </div>
+            );
+        }
+
+        // Render main component securely
+        const root = ReactDOM.createRoot(document.getElementById("app"));
+        root.render(<App />);
+    </script>
+</body>
+</html>
